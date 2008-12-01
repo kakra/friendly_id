@@ -61,7 +61,7 @@ class Slug < ActiveRecord::Base
 
     # Remove diacritics from the string.
     def strip_diacritics(string)
-      Iconv.new('ascii//ignore//translit', 'utf-8').iconv normalize(string)
+      normalize Iconv.new('ascii//ignore//translit', 'utf-8').iconv(string)
     end
 
   end
