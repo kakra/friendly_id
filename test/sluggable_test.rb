@@ -215,4 +215,13 @@ class SluggableTest < Test::Unit::TestCase
       assert_equal "test-#{i}", post.slug.name
     end
   end
+
+  def test_should_not_fail_on_numeric_basenames
+    assert_difference 'Post.count', 3 do
+      Post.create!(:name => "new in 2009")
+      Post.create!(:name => "new in 2010")
+      Post.create!(:name => "new in 2009")
+    end
+  end
+
 end
