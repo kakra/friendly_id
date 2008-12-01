@@ -55,6 +55,7 @@ class Slug < ActiveRecord::Base
       s.strip!
       s.downcase!
       s.gsub!(/\s+/, '-')
+      s.gsub!(/[0-9]*$/, '')
       s.gsub(/-\Z/, '')
     end
 
