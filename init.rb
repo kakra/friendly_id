@@ -1,4 +1,3 @@
-require 'iconv'
-require 'friendly_id'
+# encoding: utf-8
 
-ActiveRecord::Base.extend FriendlyId::ClassMethods
+require 'friendly_id'

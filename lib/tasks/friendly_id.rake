@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 namespace :friendly_id do
   desc "Make slugs for a model."
   task :make_slugs => :environment do
@@ -8,9 +10,9 @@ namespace :friendly_id do
     while records = sluggable_class.find(:all, :include => :slugs, :conditions => "slugs.id IS NULL", :limit => 1000) do
       break if records.size == 0
       records.each do |r|
-        r.set_slug
+        r.send(:set_slug)
         r.save!
-        puts "#{sluggable_class.to_s}(#{r.id}) friendly_id set to \"#{r.slug.name}\""  
+        puts "#{sluggable_class.to_s}(#{r.id}) friendly_id set to \"#{r.slug.name}\""
       end
     end
   end
@@ -24,7 +26,7 @@ namespace :friendly_id do
     Slug.destroy_all(["sluggable_type = ?", sluggable_class.to_s])
     Rake::Task["friendly_id:make_slugs"].invoke
   end
-  
+
   desc "Kill obsolete slugs older than 45 days."
   task :remove_old_slugs => :environment do
     if ENV["DAYS"].nil?
@@ -40,9 +42,9 @@ namespace :friendly_id do
 end
 
 def sluggable_class
-  if (ENV["MODEL"].split('::').size > 1) 
-    ENV["MODEL"].split('::').inject(Kernel) {|scope, const_name| scope.const_get(const_name)} 
-  else 
+  if (ENV["MODEL"].split('::').size > 1)
+    ENV["MODEL"].split('::').inject(Kernel) {|scope, const_name| scope.const_get(const_name)}
+  else
     Object.const_get(ENV["MODEL"])
   end
 end

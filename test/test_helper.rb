@@ -1,55 +1,43 @@
+# encoding: utf-8
+
 $:.unshift(File.dirname(__FILE__) + '/../lib')
-
-ENV['RAILS_ENV'] = 'test'
-
+$:.unshift(File.dirname(__FILE__))
+$KCODE = 'UTF8' if RUBY_VERSION < '1.9'
+$VERBOSE = false
 require 'test/unit'
-require File.expand_path(File.join(File.dirname(__FILE__), '../../../../config/environment.rb'))
-require 'active_record/fixtures'
-require 'action_controller/test_process'
+require 'contest'
+# You can use "rake test AR_VERSION=2.0.5" to test against 2.0.5, for example.
+# The default is to use the latest installed ActiveRecord.
+if ENV["AR_VERSION"]
+  gem 'activerecord', "#{ENV["AR_VERSION"]}"
+  gem 'activesupport', "#{ENV["AR_VERSION"]}"
+end
+require 'active_record'
+require 'active_support'
+require 'friendly_id'
+require 'models/post'
+require 'models/person'
+require 'models/user'
+require 'models/country'
+require 'models/book'
+require 'models/novel'
+require 'models/thing'
+require 'models/event'
 
-config = YAML::load(IO.read(File.dirname(__FILE__) + '/database.yml'))
-ActiveRecord::Base.logger = Logger.new(File.dirname(__FILE__) + "/debug.log")
-
-db_adapter = ENV['DB']
-
-# no db passed, try one of these fine config-free DBs before bombing.
-db_adapter ||= 
-  begin
-    require 'rubygems'
-    require 'sqlite3'
-    'sqlite3'
-  rescue MissingSourceFile
-    begin
-      require 'sqlite'
-      'sqlite'
-    rescue MissingSourceFile
-    end
-  end
-
-if db_adapter.nil?
-  raise 'No DB Adapter selected. Pass the DB= option to pick one, or install Sqlite3 or Sqlite.'
+ActiveRecord::Base.establish_connection :adapter => "sqlite3", :database => ":memory:"
+silence_stream(STDOUT) do
+  load(File.dirname(__FILE__) + "/schema.rb")
 end
 
-ActiveRecord::Base.establish_connection(config[db_adapter])
-
-load(File.dirname(__FILE__) + "/schema.rb")
-
-Test::Unit::TestCase.fixture_path = File.dirname(__FILE__) + "/fixtures"
-$LOAD_PATH.unshift(Test::Unit::TestCase.fixture_path)
-
-class Test::Unit::TestCase #:nodoc:
-  include ActionController::TestProcess
-  def create_fixtures(*table_names)
-    if block_given?
-      Fixtures.create_fixtures(Test::Unit::TestCase.fixture_path, table_names) { yield }
-    else
-      Fixtures.create_fixtures(Test::Unit::TestCase.fixture_path, table_names)
-    end
+# Credits: http://project.ioni.st/post/218#post-218
+module Test::Unit::AssertDifference
+  def assert_difference(object, method = nil, difference = 1)
+    initial_value = object.send(method)
+    yield
+    assert_equal initial_value + difference, object.send(method), "#{object}##{method}"
   end
 
-  self.use_transactional_fixtures = true
-  self.use_instantiated_fixtures  = false
-
-  protected
-
+  def assert_no_difference(object, method, &block)
+    assert_difference object, method, 0, &block
+  end
 end
