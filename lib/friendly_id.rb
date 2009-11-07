@@ -12,6 +12,7 @@ module FriendlyId
     :method => nil,
     :reserved => ["new", "index"],
     :reserved_message => 'can not be "%s"',
+    :cache_column => nil,
     :scope => nil,
     :strip_diacritics => false,
     :strip_non_ascii => false,
@@ -22,6 +23,7 @@ module FriendlyId
     :max_length,
     :reserved,
     :reserved_message,
+    :cache_column,
     :scope,
     :strip_diacritics,
     :strip_non_ascii,
@@ -40,9 +42,10 @@ module FriendlyId
     # Options:
     # * <tt>:use_slug</tt> - Defaults to false. Use slugs when you want to use a non-unique text field for friendly ids.
     # * <tt>:max_length</tt> - Defaults to 255. The maximum allowed length for a slug.
+    # * <tt>:cache_column</tt> - Defaults to nil. Use this column as a cache for generating to_param (experimental) Note that if you use this option, any calls to +attr_accessible+ must be made BEFORE any calls to has_friendly_id in your class.
     # * <tt>:strip_diacritics</tt> - Defaults to false. If true, it will remove accents, umlauts, etc. from western characters.
     # * <tt>:strip_non_ascii</tt> - Defaults to false. If true, it will all non-ascii ([^a-z0-9]) characters.
-    # * <tt>:reserved</tt> - Array of words that are reserved and can't be used as friendly_id's. For sluggable models, if such a word is used, it will be treated the same as if that slug was already taken (numeric extension will be appended). Defaults to ["new", "index"].
+    # * <tt>:reserved</tt> - Array of words that are reserved and can't be used as friendly_id's. For sluggable models, if such a word is used, it will raise a FriendlyId::SlugGenerationError. Defaults to ["new", "index"].
     # * <tt>:reserved_message</tt> - The validation message that will be shown when a reserved word is used as a frindly_id. Defaults to '"%s" is reserved'.
     #
     # You can also optionally pass a block if you want to use your own custom
@@ -55,9 +58,15 @@ module FriendlyId
     #       # Use stringex to generate the friendly_id rather than the baked-in methods
     #       text.to_url
     #     end
-    #   end    
+    #   end
     def has_friendly_id(column, options = {}, &block)
       options.assert_valid_keys VALID_FRIENDLY_ID_KEYS
+      unless options.has_key?(:cache_column)
+        if columns.any? { |c| c.name == 'cached_slug' }
+          options[:use_slug] = true
+          options[:cache_column] = :cached_slug
+        end
+      end
       options = DEFAULT_FRIENDLY_ID_OPTIONS.merge(options).merge(:column => column)
       write_inheritable_attribute :friendly_id_options, options
       class_inheritable_accessor :friendly_id_options
@@ -70,8 +79,13 @@ module FriendlyId
         extend SluggableClassMethods
         include SluggableInstanceMethods
         before_save :set_slug
+        after_save :set_slug_cache
         if block_given?
           write_inheritable_attribute :slug_normalizer_block, block
+        end
+        if options[:cache_column]
+          # only protect the column if the class is not already using attributes_accessible
+          attr_protected options[:cache_column].to_sym unless accessible_attributes
         end
       else
         require 'friendly_id/non_sluggable_class_methods'

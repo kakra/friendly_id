@@ -14,6 +14,16 @@ if ENV["AR_VERSION"]
 end
 require 'active_record'
 require 'active_support'
+
+ActiveRecord::Base.establish_connection :adapter => "sqlite3", :database => ":memory:"
+silence_stream(STDOUT) do
+  load(File.dirname(__FILE__) + "/schema.rb")
+end
+
+class ActiveRecord::Base
+  def log_protected_attribute_removal(*args) end
+end
+
 require 'friendly_id'
 require 'models/post'
 require 'models/person'
@@ -23,21 +33,5 @@ require 'models/book'
 require 'models/novel'
 require 'models/thing'
 require 'models/event'
-
-ActiveRecord::Base.establish_connection :adapter => "sqlite3", :database => ":memory:"
-silence_stream(STDOUT) do
-  load(File.dirname(__FILE__) + "/schema.rb")
-end
-
-# Credits: http://project.ioni.st/post/218#post-218
-module Test::Unit::AssertDifference
-  def assert_difference(object, method = nil, difference = 1)
-    initial_value = object.send(method)
-    yield
-    assert_equal initial_value + difference, object.send(method), "#{object}##{method}"
-  end
-
-  def assert_no_difference(object, method, &block)
-    assert_difference object, method, 0, &block
-  end
-end
+require 'models/city'
+require 'models/district'
