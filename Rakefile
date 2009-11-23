@@ -9,7 +9,7 @@ Hoe.spec "friendly_id" do
   self.author = ['Norman Clarke', 'Adrian Mugnolo', 'Emilio Tagua']
   self.email = ['norman@njclarke.com', 'adrian@mugnolo.com', 'miloops@gmail.com']
   self.summary = "A comprehensive slugging and pretty-URL plugin for ActiveRecord."
-  self.description = 'A comprehensive slugging and pretty-URL plugin for ActiveRecord.'
+  self.description = 'A comprehensive slugging and pretty-URL plugin for Rails apps using ActiveRecord.'
   self.url = 'http://friendly-id.rubyforge.org/'
   self.test_globs = ['test/**/*_test.rb']
   self.extra_deps << ['activerecord', '>= 2.2.3']
@@ -17,7 +17,22 @@ Hoe.spec "friendly_id" do
   self.extra_dev_deps << ['newgem', ">= #{::Newgem::VERSION}"]
   self.extra_dev_deps << ['sqlite3-ruby']
   self.remote_rdoc_dir = ""
+	self.readme_file = "README.rdoc"
   self.extra_rdoc_files = ["README.rdoc"]
+  self.post_install_message = <<-EOM
+
+    ***********************************************************
+
+      If you are upgrading friendly_id, please run
+
+          ./script/generate friendly_id --skip-migration
+
+      in your Rails application to ensure that you have the
+      latest friendly_id Rake tasks.
+
+    ***********************************************************
+
+  EOM
 end
 
 require 'newgem/tasks'

@@ -1,6 +1,19 @@
-# encoding: utf-8
-
 module FriendlyId::SluggableInstanceMethods
+
+  def self.included(base)
+    base.has_many :slugs, :order => 'id DESC', :as => :sluggable, :dependent => :destroy
+    base.before_save :set_slug
+    base.after_save :set_slug_cache
+    unless base.friendly_id_options[:cache_column]
+      if base.columns.any? { |c| c.name == 'cached_slug' }
+        base.friendly_id_options[:cache_column] = :cached_slug
+      end
+    end
+    # only protect the column if the class is not already using attributes_accessible
+    if base.friendly_id_options[:cache_column] && !base.accessible_attributes
+      base.attr_protected base.friendly_id_options[:cache_column].to_sym
+    end
+  end
 
   NUM_CHARS_RESERVED_FOR_FRIENDLY_ID_EXTENSION = 2
 
@@ -68,7 +81,7 @@ module FriendlyId::SluggableInstanceMethods
 
   # Get the processed string used as the basis of the friendly id.
   def slug_text
-    base = send friendly_id_options[:column]
+    base = send friendly_id_options[:method]
     if self.slug_normalizer_block
       base = self.slug_normalizer_block.call(base)
     else

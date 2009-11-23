@@ -8,7 +8,7 @@ class SluggedModelTest < Test::Unit::TestCase
   context "A slugged model with default FriendlyId options" do
 
     setup do
-      Post.friendly_id_options = FriendlyId::DEFAULT_FRIENDLY_ID_OPTIONS.merge(:column => :title, :use_slug => true)
+      Post.friendly_id_options = FriendlyId::DEFAULT_OPTIONS.merge(:method => :title, :use_slug => true)
       @post = Post.new :title => "Test post", :content => "Test content", :published => true
       @post.save!
     end
@@ -18,6 +18,7 @@ class SluggedModelTest < Test::Unit::TestCase
       Person.delete_all
       Slug.delete_all
       Thing.delete_all
+      LegacyThing.delete_all
     end
 
     should "have friendly_id options" do
@@ -40,6 +41,10 @@ class SluggedModelTest < Test::Unit::TestCase
       assert Post.find(@post.id.to_s)
     end
 
+    should "be findable by its instance" do
+      assert Post.find(@post)
+    end
+
     should "not be findable by its id if looking for something else" do
       assert_raises ActiveRecord::RecordNotFound do
         Post.find("#{@post.id}-i-dont-exists")
@@ -48,7 +53,7 @@ class SluggedModelTest < Test::Unit::TestCase
 
     should "generate slug text" do
       post = Post.new :title => "Test post", :content => "Test content"
-      assert_not_nil @post.slug_text
+      assert_not_nil post.slug_text
     end
 
     should "respect finder conditions" do
@@ -63,9 +68,15 @@ class SluggedModelTest < Test::Unit::TestCase
       end
     end
 
-    should "raise an error if the friendly_id text is blank" do
+    should "raise an error if the friendly_id text is an empty string" do
       assert_raises(FriendlyId::SlugGenerationError) do
         Post.create(:title => "")
+      end
+    end
+
+    should "raise an error if the friendly_id text is nil" do
+      assert_raises(FriendlyId::SlugGenerationError) do
+        Post.create(:title => nil)
       end
     end
 
@@ -106,28 +117,28 @@ class SluggedModelTest < Test::Unit::TestCase
     end
 
     should "not strip diacritics" do
-      @post = Post.new(:title => "¡Feliz año!")
-      assert_match(/#{'ñ'}/, @post.slug_text)
+      post = Post.new(:title => "¡Feliz año!")
+      assert_match(/#{'ñ'}/, post.slug_text)
     end
 
     should "not convert to ASCII" do
-      @post = Post.new(:title => "katakana: ゲコゴサザシジ")
-      assert_equal "katakana-ゲコゴサザシジ", @post.slug_text
+      post = Post.new(:title => "katakana: ゲコゴサザシジ")
+      assert_equal "katakana-ゲコゴサザシジ", post.slug_text
     end
 
     should "allow the same friendly_id across models" do
-      @person = Person.create!(:name => @post.title)
-      assert_equal @person.friendly_id, @post.friendly_id
+      person = Person.create!(:name => @post.title)
+      assert_equal person.friendly_id, @post.friendly_id
     end
 
     should "truncate slug text longer than the max length" do
-      @post = Post.new(:title => "a" * (Post.friendly_id_options[:max_length] + 1))
-      assert_equal @post.slug_text.length, Post.friendly_id_options[:max_length]
+      post = Post.new(:title => "a" * (Post.friendly_id_options[:max_length] + 1))
+      assert_equal post.slug_text.length, Post.friendly_id_options[:max_length]
     end
 
     should "truncate slug in 'right way' when slug is unicode" do
-      @post = Post.new(:title => "ё" * 100 + 'ю' *(Post.friendly_id_options[:max_length] - 100 + 1))
-      assert_equal @post.slug_text.mb_chars[-1], 'ю'
+      post = Post.new(:title => "ё" * 100 + 'ю' *(Post.friendly_id_options[:max_length] - 100 + 1))
+      assert_equal post.slug_text.mb_chars[-1], 'ю'
     end
 
     should "be able to reuse an old friendly_id without incrementing the sequence" do
@@ -184,9 +195,22 @@ class SluggedModelTest < Test::Unit::TestCase
       end
 
       should "strip diacritics from Roman alphabet based characters" do
-        @post = Post.new(:title => "¡Feliz año!")
-        assert_no_match(/#{'ñ'}/, @post.slug_text)
+        post = Post.new(:title => "¡Feliz año!")
+        assert_no_match(/#{'ñ'}/, post.slug_text)
       end
+
+      should "raise an error if the friendly_id text is an empty string" do
+        assert_raises(FriendlyId::SlugGenerationError) do
+          Post.create(:title => "")
+        end
+      end
+
+      should "raise an error if the friendly_id text is nil" do
+        assert_raises(FriendlyId::SlugGenerationError) do
+          Post.create(:title => nil)
+        end
+      end
+
     end
 
     context "and configured to convert to ASCII" do
@@ -195,8 +219,17 @@ class SluggedModelTest < Test::Unit::TestCase
       end
 
       should "strip non-ascii characters" do
-        @post = Post.new(:title => "katakana: ゲコゴサザシジ")
-        assert_equal "katakana", @post.slug_text
+        post = Post.new(:title => "katakana: ゲコゴサザシジ")
+        assert_equal "katakana", post.slug_text
+      end
+    end
+
+    context "that uses a custom table name" do
+      should "support normal CRUD operations" do
+        assert thing = LegacyThing.create!(:name => "a name")
+        thing.name = "a new name"
+        assert thing.save!
+        assert thing.destroy
       end
     end
 
